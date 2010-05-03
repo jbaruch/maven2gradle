@@ -1,0 +1,39 @@
+apply plugin: 'groovy'
+apply plugin: 'maven'
+
+group = 'org.gradle.tools'
+version = '1.0-SNAPSHOT'
+
+repositories {
+  mavenRepo urls: ["https://www.alphacsp.net/artifactory/libs-releases"]
+  mavenRepo urls: ["https://www.alphacsp.net/artifactory/libs-snapshots"]
+}
+
+configurations {
+  deployerJars
+}
+
+task sourcesJar(type: Jar, dependsOn: compileGroovy) {
+  from sourceSets.main.allSource
+  classifier = 'sources'
+}
+
+artifacts {
+  archives sourcesJar
+}
+
+
+dependencies {
+  groovy group: 'org.codehaus.groovy', name: 'groovy', version: '1.7.1'
+  deployerJars group: 'org.apache.maven.wagon', name: 'wagon-ssh', version: '1.0-beta-2'
+}
+
+uploadArchives {
+  repositories.mavenDeployer {
+    configuration = configurations.deployerJars
+    pom.artifactId = 'maven2gradle'
+    snapshotRepository(url: "https://www.alphacsp.net/artifactory/libs-snapshots-local") {
+      authentication(userName: "baruchs", password: '')
+    }
+  }
+}

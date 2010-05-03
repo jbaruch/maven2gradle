@@ -1,0 +1,11 @@
+This tool obtains  the effective pom of the current project, reads its dependencies and generates build.gradle scripts. It also generates settings.gradle for multimodule builds.
+It currently supports both single-module and multi-module POMs, inheritance, dependency management, properties - everything.
+
+Usage:
+Run Maven2Gradle main class. Parameters:
+* -verbose prints the obtained effective pom
+* -keepFile saves the obtained effective pom
+
+
+@author Antony Stubbs http://github.com/astubbs
+@author Baruch Sadogursky http://github.com/jbaruch
