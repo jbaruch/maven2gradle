@@ -1,22 +1,17 @@
-buildscript {
-  repositories {
-    mavenRepo urls: 'http://gradle.artifactoryonline.com/gradle/plugins'
-  }
-  dependencies {
-    classpath "org.gradle.plugins:gradle-idea-plugin:0.2"
-  }
-}
-
 apply plugin: 'groovy'
 apply plugin: 'maven'
-apply plugin: 'org.gradle.idea'
+apply plugin: 'idea'
 
 group = 'org.gradle.tools'
 version = '1.0-SNAPSHOT'
 
+	sourceCompatibility = 1.6
+	targetCompatibility = 1.6
+
 repositories {
-  mavenRepo urls: ["https://www.alphacsp.net/artifactory/libs-releases"]
-  mavenRepo urls: ["https://www.alphacsp.net/artifactory/libs-snapshots"]
+  org.apache.ivy.util.url.CredentialsStore.INSTANCE.addCredentials("REALM", "HOST", "USER", "PASSWORD");
+  mavenRepo urls: ["http://repo.jfrog.org/artifactory/libs-releases"]
+  mavenRepo urls: ["http://repo.jfrog.org/artifactory/libs-snapshots"]
 }
 
 configurations {
@@ -35,6 +30,8 @@ artifacts {
 
 dependencies {
   groovy group: 'org.codehaus.groovy', name: 'groovy', version: '1.7.1'
+  compile group: 'org.apache.ant', name: 'ant', version: '1.8.1'
+  compile(group: 'de.uka.ilkd', name: 'jpplib', version: '0.6')
   deployerJars group: 'org.apache.maven.wagon', name: 'wagon-ssh', version: '1.0-beta-2'
 }
 
@@ -42,8 +39,8 @@ uploadArchives {
   repositories.mavenDeployer {
     configuration = configurations.deployerJars
     pom.artifactId = 'maven2gradle'
-    snapshotRepository(url: "https://www.alphacsp.net/artifactory/libs-snapshots-local") {
-      authentication(userName: "baruchs", password: '')
+    snapshotRepository(url: "http://repo.jfrog.org/artifactory/libs-snapshots-local") {
+      authentication(userName: USER, password: PASSWORD)
     }
   }
 }
