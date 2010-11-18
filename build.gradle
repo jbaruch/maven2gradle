@@ -29,9 +29,8 @@ artifacts {
 
 
 dependencies {
-  groovy group: 'org.codehaus.groovy', name: 'groovy', version: '1.7.1'
+  groovy localGroovy()
   compile group: 'org.apache.ant', name: 'ant', version: '1.8.1'
-  compile(group: 'de.uka.ilkd', name: 'jpplib', version: '0.6')
   deployerJars group: 'org.apache.maven.wagon', name: 'wagon-ssh', version: '1.0-beta-2'
 }
 

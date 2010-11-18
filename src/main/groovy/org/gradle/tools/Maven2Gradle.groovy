@@ -1,8 +1,5 @@
 package org.gradle.tools
 
-import de.uka.ilkd.pp.Layouter
-import de.uka.ilkd.pp.StringBackend
-
 /*
  * Copyright 2007-2009 the original author or authors.
  *
@@ -35,6 +32,8 @@ class Maven2Gradle {
   def dependentWars = []
   def qualifiedNames
   def workingDir
+  def effectiveSettings
+  def effectivePom
 
   public static void main(String[] args) {
     new Maven2Gradle().convert(args)
@@ -44,56 +43,58 @@ class Maven2Gradle {
     workingDir = new File('.').canonicalFile
     println "Working path:" + workingDir.absolutePath + "\n"
 
-    String pomContents = geEffectiveContents('pom', args)
+    // use the Groovy XmlSlurper library to parse the text string
+    effectivePom = new XmlSlurper().parseText(geEffectiveContents('pom', args))
+    effectiveSettings = new XmlSlurper().parseText(geEffectiveContents('settings'))
+    String build
+    def multimodule = effectivePom.name() == "projects"
 
-    if (pomContents != null && !pomContents.empty) {
-      // use the Groovy XmlSlurper library to parse the text string and get a reference to the outer project element.
-      def root = new XmlSlurper().parseText(pomContents)
-      String build
-      def reactorProjects = []
-      def multimodule = root.name() == "projects"
-      def pomReplacementPart = """task movePoms(dependsOn: install) << {
-${multimodule ? "  subprojects.each {project ->\n" : ""}    def pomsDir = new File(project.buildDir, "poms")
-    def defaultPomName = "pom-default.xml"
-    def defaultPom = new File(pomsDir, defaultPomName)
-    if (defaultPom.exists()) {
-      File pomFile = new File(project.projectDir, "pom.xml")
-      if (pomFile.exists()) {
-        pomFile.renameTo(new File(project.projectDir, "pom.xml.bak"))
-      }
-      project.copy {
-        from(pomsDir) {
-          include defaultPomName
-          rename defaultPomName, 'pom.xml'
-        }
-        into(project.projectDir)
-      }
-    }
-${multimodule ? "  }\n" : ""}}
-movePoms {
+
+    def uploadArchives = {
+
+
+      """
+
+
+
+
+
+uploadArchives {
   group = 'Maven'
-  description = 'Move pom.xml generated from Gradle script to project root dir (for IDE integraton).'
-}
-install.group = 'Maven'
-"""
-      if (multimodule) {
-        println "This is multi-module project.\n"
-        def allProjects = root.project
-        print "Generating settings.gradle... "
-        qualifiedNames = generateSettings(workingDir.getName(), allProjects[0].artifactId, allProjects);
-        println "Done."
-        print "Configuring Dependencies... "
-        def dependencies = [:];
-        allProjects.each { project ->
-          if (project.packaging == "pom") {
-            reactorProjects.add(project)
-          }
-          dependencies[project.artifactId.text()] = getDependencies(project, reactorProjects, allProjects)
+  description = "Does a maven deploy of archives artifacts."
+
+  repositories.mavenDeployer {
+        name = 'sshDeployer' // optional
+        repository(url: "http://repos.mycompany.com/releases") {
+            authentication(userName: "me", password: "myPassword")
         }
-        println "Done."
+      configurePom(pom)
+    }
+}
 
 
-        build = """allprojects  {
+
+
+
+
+"""
+    }
+
+    if (multimodule) {
+      println "This is multi-module project.\n"
+      def allProjects = effectivePom.project
+      print "Generating settings.gradle... "
+      qualifiedNames = generateSettings(workingDir.getName(), allProjects[0].artifactId, allProjects);
+      println "Done."
+      print "Configuring Dependencies... "
+      def dependencies = [:];
+      allProjects.each { project ->
+        dependencies[project.artifactId.text()] = getDependencies(project, allProjects)
+      }
+      println "Done."
+
+
+      build = """allprojects  {
   apply plugin: 'java'
   apply plugin: 'maven'
 
@@ -102,109 +103,146 @@ ${getArtifactData(allProjects[0])}
 
 subprojects {
 ${getCompilerSettings(allProjects[0])}
-${getPackageSources(allProjects[0])}
+${packageSources(allProjects[0])}
 ${getRepositoriesForProjects(allProjects)}
 ${dependencies.get(allProjects[0].artifactId.text())}}
 
 dependsOnChildren()
 """
-        reactorProjects.each { project ->
-          project.modules.module.each {
-            String moduleName = it;
-            def submodule = allProjects.find {
-              projectDir(it).name == moduleName && !it.packaging.text().equals("pom")
-            }
-            if (!submodule.isEmpty()) {
-              def submoduleId = submodule.artifactId.text()
-              String moduleDependencies = dependencies.get(submoduleId)
-              boolean warPack = submodule.packaging.text().equals("war")
-              def hasDependencies = !(moduleDependencies == null || moduleDependencies.isEmpty())
-              if (warPack || hasDependencies) {
-                print "Generating build.gradle for module ${submoduleId}... "
-                File submoduleBuildFile = new File(projectDir(submodule), "build.gradle")
-                String moduleBuild = """
-  description = '${project.name}'
-  
-"""
-                if (warPack) {
-                  moduleBuild += """apply plugin: 'war'
-"""
-                  if (dependentWars.any {mavenDependency ->
-                    mavenDependency.groupId.text() == submodule.groupId.text() &&
-                            mavenDependency.artifactId.text() == submoduleId
-                  }) {
-                    moduleBuild += """jar.enabled = true
+      modules(allProjects).each { module ->
+        def id = module.artifactId.text()
+        String moduleDependencies = dependencies.get(id)
+        boolean warPack = module.packaging.text().equals("war")
+        def hasDependencies = !(moduleDependencies == null || moduleDependencies.isEmpty())
+        print "Generating build.gradle for module ${id}... "
+        File submoduleBuildFile = new File(projectDir(module), 'build.gradle')
+        def group = ''
+        if (module.groupId != allProjects[0].groupId) {
+          group = "group = '${module.groupId}"
+        }
+        String moduleBuild = """
+${group}
+description = '${module.name}'
 
 """
-                  }
-                }
-                if (hasDependencies) {
-                  moduleBuild += moduleDependencies
-                }
-                if (submoduleBuildFile.exists()) {
-                  print "(backing up existing one)... "
-                  submoduleBuildFile.renameTo(new File("build.gradle.bak"))
-                }
-                submoduleBuildFile.text = prettyPrint(moduleBuild)
-                println "Done."
-              }
-            }
+        if (warPack) {
+          moduleBuild += """apply plugin: 'war'
+"""
+          if (dependentWars.any {project ->
+            project.groupId.text() == module.groupId.text() &&
+                    project.artifactId.text() == id
+          }) {
+            moduleBuild += """jar.enabled = true
+"""
           }
         }
-        //TODO deployment
-      } else {//simple
-        println "This is single module project."
-        build = """apply plugin: 'java'
+        if (hasDependencies) {
+          moduleBuild += moduleDependencies
+        }
+        if (submoduleBuildFile.exists()) {
+          print "(backing up existing one)... "
+          submoduleBuildFile.renameTo(new File("build.gradle.bak"))
+        }
+        def packageTests = packageTests(module);
+        if (packageTests) {
+          moduleBuild += packageTests;
+        }
+        submoduleBuildFile.text = moduleBuild
+        println "Done."
+      }
+      //TODO deployment
+    } else {//simple
+      println "This is single module project."
+      build = """apply plugin: 'java'
 apply plugin: 'maven'
 
-${getArtifactData(root)}
+${getArtifactData(effectivePom)}
 
-description = \"""${root.name}\"""
+description = \"""${effectivePom.name}\"""
 
-${getCompilerSettings(root)}
+${getCompilerSettings(effectivePom)}
 
 """
 
-        print "Configuring Maven repositories... "
-        Set<String> repoSet = new LinkedHashSet<String>();
-        getRepositoriesForModule(root, repoSet)
-        String repos = "repositories {\n"
-        repoSet.each {
-          repos = "${repos} ${it}\n"
-        }
-        build += "${repos}}\n"
-        println "Done."
-        print "Configuring Dependencies... "
-        String dependencies = getDependencies(root, reactorProjects, null)
-        build += dependencies
-        println "Done."
-
-        print "Generating settings.gradle if needed... "
-        generateSettings(workingDir.getName(), root.artifactId, null);
-        println "Done."
-
+      print "Configuring Maven repositories... "
+      Set<String> repoSet = new LinkedHashSet<String>();
+      getRepositoriesForModule(effectivePom, repoSet)
+      String repos = """repositories {
+        $localRepoUri
+"""
+      repoSet.each {
+        repos = "${repos} ${it}\n"
       }
-      build += """
-      ${pomReplacementPart}
-      """
-      print "Generating main build.gradle... "
-      def buildFile = new File("build.gradle")
-      if (buildFile.exists()) {
-        print "(backing up existing one)... "
-        buildFile.renameTo(new File("build.gradle.bak"))
-      }
-      buildFile.text = prettyPrint(build)
+      build += "${repos}}\n"
       println "Done."
+      print "Configuring Dependencies... "
+      String dependencies = getDependencies(effectivePom, null)
+      build += dependencies
+      println "Done."
+
+      String packageTests = packageTests(effectivePom);
+      if (packageTests) {
+        build += '//packaging tests'
+        build += packageTests;
+      }
+      print "Generating settings.gradle if needed... "
+      generateSettings(workingDir.getName(), effectivePom.artifactId, null);
+      println "Done."
+
+    }
+
+
+
+    print "Generating main build.gradle... "
+    def buildFile = new File("build.gradle")
+    if (buildFile.exists()) {
+      print "(backing up existing one)... "
+      buildFile.renameTo(new File("build.gradle.bak"))
+    }
+    buildFile.text = build
+    println "Done."
+  }
+
+  def modules = {allProjects ->
+    return allProjects.findAll { project ->
+      !project.parent.text().empty && project.packaging.text() != 'pom'
+    }
+
+  }
+
+  def fqn = {project, allProjects ->
+    def buffer = new StringBuilder()
+    generateFqn(project, allProjects, buffer)
+    return buffer.toString()
+  }
+
+  private generateFqn(def project, def allProjects, StringBuilder buffer) {
+    def artifactId = project.artifactId.text()
+    println "getting fqn for ${artifactId}"
+    buffer.insert(0, ":${artifactId}")
+    //we don't need the top-level parent in gradle, so we stop on it
+    if (project.parent.artifactId.text() != allProjects[0].artifactId.text()) {
+      generateFqn(allProjects.find {fullProject ->
+        fullProject.artifactId.text() == project.parent.artifactId.text()
+      }, allProjects, buffer)
     }
   }
 
-  def prettyPrint = {raw ->
-    StringBackend stringBackend = new StringBackend(80)
-    Layouter layouter = new Layouter(stringBackend, 4)
-    layouter.print(raw)
-    stringBackend.string
-  }
 
+  def localRepoUri = {
+    //we have local maven repo full with good stuff. Let's reuse it!
+    String userHome = System.properties['user.home']
+    userHome = userHome.replaceAll('\\\\', '/')
+    def localRepoUri = new File(effectiveSettings.localRepository.text()).toURI().toString()
+    if (localRepoUri.contains(userHome)) {
+      localRepoUri = localRepoUri.replace(userHome, '${System.properties[\'user.home\']}')
+    }
+    //in URI format there is one slash after file, while  Gradle needs two
+    localRepoUri = localRepoUri.replace('file:/', 'file://')
+    return """mavenRepo urls: [\"${localRepoUri}\"]
+    """
+
+  }
 
   private String getArtifactData(project) {
     return """  group = '$project.groupId'
@@ -214,18 +252,8 @@ ${getCompilerSettings(root)}
 
   private String getRepositoriesForProjects(projects) {
     print 'Configuring Repositories... '
-    def settings = new XmlSlurper().parseText(geEffectiveContents('settings'))
-    //we have local maven repo full with good stuff. Let's reuse it!
-    String userHome = System.properties['user.home']
-    userHome = userHome.replaceAll('\\\\', '/')
-    def localRepoUri = new File(settings.localRepository.text()).toURI().toString()
-    if (localRepoUri.contains(userHome)) {
-      localRepoUri = localRepoUri.replace(userHome, '${System.properties[\'user.home\']}')
-    }
-    //in URI format there is one slash after file, while  Gradle needs two
-    localRepoUri = localRepoUri.replace('file:/', 'file://')
     String repos = """  repositories {
-    mavenRepo urls: ["${localRepoUri}"]
+    $localRepoUri
 """
     def repoSet = new LinkedHashSet<String>();
     projects.each {
@@ -246,7 +274,7 @@ ${getCompilerSettings(root)}
     //No need to include plugin repos - who cares about maven plugins?
   }
 
-  private String getDependencies(project, reactorProjects, allProjects) {
+  private String getDependencies(project, allProjects) {
 // use GPath to navigate the object hierarchy and retrieve the collection of dependency nodes.
     def dependencies = project.dependencies.dependency
     def war = project.packaging == "war"
@@ -289,11 +317,11 @@ ${getCompilerSettings(root)}
      * so it branches off, otherwise we call our simple print function
      */
     def createGradleDep = {String scope, StringBuilder sb, mavenDependency ->
-      def projectFound = allProjects.any { prj ->
-        return prj.artifactId == mavenDependency.artifactId
+      def projectDep = allProjects.find { prj ->
+        return prj.artifactId.text() == mavenDependency.artifactId.text() && prj.groupId.text() == mavenDependency.groupId.text()
       }
-      if (!reactorProjects.isEmpty() && mavenDependency.groupId == project.groupId && projectFound) {
-        createProjectDependency(mavenDependency, sb, scope)
+      if (projectDep) {
+        createProjectDependency(projectDep, sb, scope, allProjects)
       } else {
         def dependencyProperties = null;
         if (!war && scope == 'provided') {
@@ -332,13 +360,14 @@ ${getCompilerSettings(root)}
   }
 
   def plugin = {project, artifactId ->
-    project.build.plugins.plugin.find {
+    return project.build.plugins.plugin.find {
       it.artifactId.text().equals(artifactId)
     }
   }
 
-  def goalExists = {plugin, goalName ->
-    plugin?.executions?.any {->
+  boolean goalExists(goalName, plugin){
+    //todo fix
+    return plugin.text().contains('executions') && plugin.executions.any {->
       execution
       execution?.goals?.any {->
         goal
@@ -351,25 +380,39 @@ ${getCompilerSettings(root)}
     def sourceSetStr = ''
     if (!sourceSets.empty) {
       sourceSetStr = """task packageSources(type: Jar) {
-    classifier = 'sources'
-    """
+classifier = 'sources'
+"""
       sourceSets.each { sourceSet ->
         sourceSetStr += """from sourceSets.${sourceSet}.allSource
 """
       }
       sourceSetStr += """
-    }"""
+}
+artifacts.archives packageSources"""
     }
     return sourceSetStr
   }
 
-  private String getPackageSources(project) {
+
+  def packageTests = {project ->
+    def jarPlugin = plugin(project, 'maven-jar-plugin')
+    boolean gEx = goalExists('test-jar', jarPlugin)
+    gEx ? """
+task packageTests(type: Jar) {
+  from sourceSets.test.classes
+  classifier = 'tests'
+}
+artifacts.archives packageTests
+""" : ''
+  }
+
+  def packageSources = { project ->
     def sourcePlugin = plugin(project, 'maven-source-plugn')
     def sourceSets = []
     if (sourcePlugin) {
-      if (goalExists(sourcePlugin, 'jar')) {
+      if (goalExists('jar', sourcePlugin)) {
         sourceSets += 'main'
-      } else if (goalExists(sourcePlugin, 'test-jar')) {
+      } else if (goalExists('test-jar', sourcePlugin)) {
         sourceSets += 'test'
       }
     }
@@ -396,55 +439,29 @@ ${getCompilerSettings(root)}
   }
 
   def artifactId = {File dir ->
-    new XmlSlurper().parse(new File(dir, 'pom.xml')).artifactId.text()
+    return new XmlSlurper().parse(new File(dir, 'pom.xml')).artifactId.text()
   }
 
   def projectDir = {project ->
-    new File(project.build.directory.text()).parentFile
+    return new File(project.build.directory.text()).parentFile
   }
 
   private def generateSettings(def dirName, def mvnProjectName, def projects) {
     def qualifiedNames = [:]
-    def projectName = null;
+    def projectName = "";
     if (dirName != mvnProjectName) {
       projectName = """rootProject.name = '${mvnProjectName}'
 """
     }
+    def modulePoms = modules(projects)
+
     def modules = new StringBuilder();
     def artifactIdToDir = [:]
     if (projects) {
-      projects.each { project ->
-        if (project.packaging == "pom") {
-          def reactorDir = projectDir(project)
-          project.modules.module.each { module ->
-            String moduleName = module;
-            //let's figure out if this is a top level module
-            final def possibleModuleDir = new File(reactorDir, module.text())
-            if (possibleModuleDir.directory && possibleModuleDir.absoluteFile.parentFile.absolutePath == workingDir.absolutePath) { //top level
-              def artifactId = artifactId(possibleModuleDir)
-              if (artifactId != moduleName) {
-                artifactIdToDir[artifactId] = possibleModuleDir.name
-              }
-              modules.append("'$artifactId', ")
-            } else {
-              //this is module of subproject, let's find out which
-              def submodule = projects.find {
-                def prjDir = projectDir(it)
-                prjDir.name == moduleName && prjDir.parentFile == reactorDir
-              }
-              def submoduleDir = projectDir(submodule)
-              def parentArtifactId = artifactId(submoduleDir.parentFile)
-              def artifactId = artifactId(submoduleDir)
-              //TODO recursion until parent
-              def qualifiedModuleName = "${parentArtifactId}:${artifactId}"
-              qualifiedNames[artifactId] = qualifiedModuleName
-              if (artifactId != submoduleDir) {
-                artifactIdToDir[qualifiedModuleName] = "${submoduleDir.parentFile.name}/${submoduleDir.name}"
-              }
-              modules.append("'${qualifiedModuleName}', ")
-            }
-          }
-        }
+      modulePoms.each { project ->
+        def fqn = fqn(project, projects)
+        artifactIdToDir[fqn] = workingDir.toURI().relativize(projectDir(project).toURI()).path
+        modules.append("'${fqn}', ")
       }
       def strLength = modules.length()
       if (strLength > 2) {
@@ -456,13 +473,12 @@ ${getCompilerSettings(root)}
       print "(backing up existing one)... "
       settingsFile.renameTo(new File("settings.gradle.bak"))
     }
-    def settingsText = "${projectName ?: ''} ${modules.length() > 0 ? "include ${modules.toString()}" : ''}"
+    def settingsText = "${projectName} ${modules.length() > 0 ? "include ${modules.toString()}" : ''}"
     artifactIdToDir.each {entry ->
-      //TODO fucking escaping
       settingsText += """
-project(':$entry.key').projectDir = """ + '"$rootDir/' + "${entry.value}" + '" as File'
+project('$entry.key').projectDir = """ + '"$rootDir/' + "${entry.value}" + '" as File'
     }
-    settingsFile.text = prettyPrint(settingsText)
+    settingsFile.text = settingsText
     return qualifiedNames
   }
 
@@ -520,12 +536,12 @@ project(':$entry.key').projectDir = """ + '"$rootDir/' + "${entry.value}" + '" a
 /**
  * Print out the basic form og gradle dependency
  */
-  private def createProjectDependency(mavenDependency, build, String scope) {
-    if (mavenDependency.type == 'war') {
-      dependentWars.add mavenDependency
+  private def createProjectDependency(projectDep, build, String scope, allProjects) {
+    if (projectDep.packaging.text() == 'war') {
+      dependentWars += projectDep
     }
     //TODO support nested projects
-    build.append("${scope} project(':${qualifiedNames[mavenDependency.artifactId.text()] ?: mavenDependency.artifactId}')\n")
+    build.append("${scope} project('${fqn(projectDep, allProjects)}')\n")
   }
 
 /**
