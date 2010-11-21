@@ -27,8 +27,6 @@ package org.gradle.tools
  * */
 class Maven2Gradle {
 
-  String sourceCompatibility
-  String targetCompatibility
   def dependentWars = []
   def qualifiedNames
   def workingDir
@@ -51,14 +49,7 @@ class Maven2Gradle {
 
 
     def uploadArchives = {
-
-
       """
-
-
-
-
-
 uploadArchives {
   group = 'Maven'
   description = "Does a maven deploy of archives artifacts."
@@ -71,12 +62,6 @@ uploadArchives {
       configurePom(pom)
     }
 }
-
-
-
-
-
-
 """
     }
 
@@ -98,14 +83,14 @@ uploadArchives {
   apply plugin: 'java'
   apply plugin: 'maven'
 
-${getArtifactData(allProjects[0])}
+  ${getArtifactData(allProjects[0])}
 }
 
 subprojects {
-${getCompilerSettings(allProjects[0])}
-${packageSources(allProjects[0])}
-${getRepositoriesForProjects(allProjects)}
-${dependencies.get(allProjects[0].artifactId.text())}}
+  ${compilerSettings(allProjects[0])}
+  ${packageSources(allProjects[0])}
+  ${getRepositoriesForProjects(allProjects)}
+  ${dependencies.get(allProjects[0].artifactId.text())}}
 
 dependsOnChildren()
 """
@@ -160,7 +145,7 @@ ${getArtifactData(effectivePom)}
 
 description = \"""${effectivePom.name}\"""
 
-${getCompilerSettings(effectivePom)}
+${compilerSettings(effectivePom)}
 
 """
 
@@ -352,28 +337,19 @@ ${getCompilerSettings(effectivePom)}
     return build.toString();
   }
 
-  private String getCompilerSettings(project) {
-    def plugin = plugin(project, 'maven-compiler-plugin')
-    sourceCompatibility = plugin.configuration.source.text().trim() ? this.plugin.configuration.source : "1.5";
-    targetCompatibility = plugin.configuration.target.text().trim() ? this.plugin.configuration.target : "1.5";
-    return "sourceCompatibility = ${sourceCompatibility}\ntargetCompatibility = ${targetCompatibility}\n"
+  def compilerSettings = {project->
+    def configuration = plugin(project, 'maven-compiler-plugin').configuration
+    return "sourceCompatibility = ${configuration.source.text() ?: '1.5'}\ntargetCompatibility = ${plugin(project, 'maven-compiler-plugin').configuration.target.text() ?: '1.5'}\n"
   }
 
   def plugin = {project, artifactId ->
-    return project.build.plugins.plugin.find {
-      it.artifactId.text().equals(artifactId)
+    project.build.plugins.plugin.find {plgn ->
+      plgn.artifactId.text().equals(artifactId)
     }
   }
 
-  boolean goalExists(goalName, plugin){
-    //todo fix
-    return plugin.text().contains('executions') && plugin.executions.any {->
-      execution
-      execution?.goals?.any {->
-        goal
-        goal?.text()?.startsWith(goalName)
-      }
-    }
+  def goalExists = { goalName, plugin ->
+    plugin.executions.text().startsWith(goalName)
   }
 
   def packSources = {sourceSets ->
@@ -534,13 +510,12 @@ project('$entry.key').projectDir = """ + '"$rootDir/' + "${entry.value}" + '" as
     build.append("${scope} \"${classifier}\"\n")
   }
 /**
- * Print out the basic form og gradle dependency
+ * Print out the basic form of gradle dependency
  */
   private def createProjectDependency(projectDep, build, String scope, allProjects) {
     if (projectDep.packaging.text() == 'war') {
       dependentWars += projectDep
     }
-    //TODO support nested projects
     build.append("${scope} project('${fqn(projectDep, allProjects)}')\n")
   }
 
