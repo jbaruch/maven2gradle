@@ -3,7 +3,8 @@ It currently supports both single-module and multi-module POMs, inheritance, dep
 
 Installation:
 =============
-* Download the latest jar from http://repo.jfrog.org/artifactory/repo/org/gradle/tools/maven2gradle/1.0-SNAPSHOT/
+* Download the latest jar from [JFrog Artifactory repository](http://repo.jfrog.org/artifactory/repo/org/gradle/tools/maven2gradle/1.0-SNAPSHOT/)
+
 * Put the jar into $GRADLE_HOME/lib
 * Put the batch files from sources bin directory into $GRADLE_HOME/bin
 
