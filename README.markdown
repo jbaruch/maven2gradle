@@ -19,5 +19,6 @@ Usage:
 
 Note: Your project will be considered multi-module only if your reactor is also a parent of at least one of your modules. Why so? Reactor project is built last, when Parent project is built first. I need reactor to be built first, because effective-pom Mojo generates needed output only if it founds modules in first project it encounters. Making reactor also a parent achieves this.
 
-@author Antony Stubbs http://github.com/astubbs
-@author Baruch Sadogursky http://github.com/jbaruch
+[Antony Stubbs] (http://github.com/astubbs)
+
+[Baruch Sadogursky] (http://github.com/jbaruch)
