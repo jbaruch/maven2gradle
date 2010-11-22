@@ -3,13 +3,16 @@ It currently supports both single-module and multi-module POMs, inheritance, dep
 
 Installation:
 =============
-* Put the jar into $GRADLE_HOME\lib
-* Put the batch files from sources bin directory into $GRADLE_HOME\bin
+* Download the latest jar from http://repo.jfrog.org/artifactory/repo/org/gradle/tools/maven2gradle/1.0-SNAPSHOT/
+* Put the jar into $GRADLE_HOME/lib
+* Put the batch files from sources bin directory into $GRADLE_HOME/bin
 
 Usage:
 ============
 * Run maven2gradle batch in the root of the converted project
-* Available options:
+
+ Available options:
+ -----------------
 *   -verbose prints the obtained effective pom
 *   -keepFile saves the obtained effective pom
 

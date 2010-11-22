@@ -50,6 +50,15 @@ class Maven2Gradle {
 
     def uploadArchives = {
       """
+
+
+
+
+
+
+
+
+
 uploadArchives {
   group = 'Maven'
   description = "Does a maven deploy of archives artifacts."
@@ -62,6 +71,15 @@ uploadArchives {
       configurePom(pom)
     }
 }
+
+
+
+
+
+
+
+
+
 """
     }
 
@@ -90,11 +108,12 @@ subprojects {
   ${compilerSettings(allProjects[0])}
   ${packageSources(allProjects[0])}
   ${getRepositoriesForProjects(allProjects)}
+  ${globalExclusions(allProjects[0])}
   ${dependencies.get(allProjects[0].artifactId.text())}}
 
 dependsOnChildren()
 """
-      modules(allProjects).each { module ->
+      modules(allProjects, false).each { module ->
         def id = module.artifactId.text()
         String moduleDependencies = dependencies.get(id)
         boolean warPack = module.packaging.text().equals("war")
@@ -146,6 +165,7 @@ ${getArtifactData(effectivePom)}
 description = \"""${effectivePom.name}\"""
 
 ${compilerSettings(effectivePom)}
+${globalExclusions(effectivePom)}
 
 """
 
@@ -175,9 +195,6 @@ ${compilerSettings(effectivePom)}
       println "Done."
 
     }
-
-
-
     print "Generating main build.gradle... "
     def buildFile = new File("build.gradle")
     if (buildFile.exists()) {
@@ -188,11 +205,29 @@ ${compilerSettings(effectivePom)}
     println "Done."
   }
 
-  def modules = {allProjects ->
-    return allProjects.findAll { project ->
-      !project.parent.text().empty && project.packaging.text() != 'pom'
+  def globalExclusions = {project ->
+    def exclusions = ''
+    def enforcerPlugin = plugin('maven-enforcer-plugin', project)
+    def enforceGoal = pluginGoal('enforce', enforcerPlugin)
+    if (enforceGoal) {
+      exclusions += 'configurations {\n'
+      enforceGoal.configuration.rules.bannedDependencies.excludes.childNodes().each {
+        def tokens = it.text().tokenize(':')
+        exclusions += "all*.exclude group: '${tokens[0]}'"
+        if (tokens.size() > 1 && tokens[1] != '*') {
+          exclusions += ", module: '${tokens[1]}'"
+        }
+        exclusions += '\n'
+      }
     }
+    exclusions = exclusions ? exclusions += '}' : exclusions
+    exclusions
+  }
 
+  def modules = {allProjects, incReactors ->
+    return allProjects.findAll { project ->
+      !project.parent.text().empty && (incReactors || project.packaging.text() != 'pom')
+    }
   }
 
   def fqn = {project, allProjects ->
@@ -203,7 +238,6 @@ ${compilerSettings(effectivePom)}
 
   private generateFqn(def project, def allProjects, StringBuilder buffer) {
     def artifactId = project.artifactId.text()
-    println "getting fqn for ${artifactId}"
     buffer.insert(0, ":${artifactId}")
     //we don't need the top-level parent in gradle, so we stop on it
     if (project.parent.artifactId.text() != allProjects[0].artifactId.text()) {
@@ -309,7 +343,7 @@ ${compilerSettings(effectivePom)}
         createProjectDependency(projectDep, sb, scope, allProjects)
       } else {
         def dependencyProperties = null;
-        if (!war && scope == 'provided') {
+        if (!war && scope == 'providedCompile') {
           scope = 'compile'
           dependencyProperties = [provided: true]
         }
@@ -330,26 +364,30 @@ ${compilerSettings(effectivePom)}
       if (!compileTimeScope.isEmpty()) compileTimeScope.each() { createGradleDep("compile", build, it) }
       if (!runTimeScope.isEmpty()) runTimeScope.each() { createGradleDep("runtime", build, it) }
       if (!testScope.isEmpty()) testScope.each() { createGradleDep("testCompile", build, it) }
-      if (!providedScope.isEmpty()) providedScope.each() { createGradleDep("provided", build, it) }
+      if (!providedScope.isEmpty()) providedScope.each() { createGradleDep("providedCompile", build, it) }
       if (!systemScope.isEmpty()) systemScope.each() { createGradleDep("system", build, it) }
       build.append("}\n")
     }
     return build.toString();
   }
 
-  def compilerSettings = {project->
-    def configuration = plugin(project, 'maven-compiler-plugin').configuration
-    return "sourceCompatibility = ${configuration.source.text() ?: '1.5'}\ntargetCompatibility = ${plugin(project, 'maven-compiler-plugin').configuration.target.text() ?: '1.5'}\n"
+  def compilerSettings = {project ->
+    def configuration = plugin('maven-compiler-plugin', project).configuration
+    return "sourceCompatibility = ${configuration.source.text() ?: '1.5'}\ntargetCompatibility = ${configuration.target.text() ?: '1.5'}\n"
   }
 
-  def plugin = {project, artifactId ->
-    project.build.plugins.plugin.find {plgn ->
-      plgn.artifactId.text().equals(artifactId)
+  def plugin = {artifactId, project ->
+    project.build.plugins.plugin.find {pluginTag ->
+      pluginTag.artifactId.text() == artifactId
     }
   }
 
-  def goalExists = { goalName, plugin ->
-    plugin.executions.text().startsWith(goalName)
+  def pluginGoal = { goalName, plugin ->
+    plugin.executions.execution.find { exec ->
+      exec.goals.goal.find {gl ->
+        gl.text().startsWith(goalName)
+      }
+    }
   }
 
   def packSources = {sourceSets ->
@@ -366,14 +404,15 @@ classifier = 'sources'
 }
 artifacts.archives packageSources"""
     }
-    return sourceSetStr
+    println 'Done.'
+    sourceSetStr
   }
 
 
   def packageTests = {project ->
-    def jarPlugin = plugin(project, 'maven-jar-plugin')
-    boolean gEx = goalExists('test-jar', jarPlugin)
-    gEx ? """
+    print 'Adding tests packaging...'
+    def jarPlugin = plugin('maven-jar-plugin', project)
+    pluginGoal('test-jar', jarPlugin) ? """
 task packageTests(type: Jar) {
   from sourceSets.test.classes
   classifier = 'tests'
@@ -383,16 +422,17 @@ artifacts.archives packageTests
   }
 
   def packageSources = { project ->
-    def sourcePlugin = plugin(project, 'maven-source-plugn')
+    def sourcePlugin = plugin('maven-source-plugin', project)
     def sourceSets = []
     if (sourcePlugin) {
-      if (goalExists('jar', sourcePlugin)) {
+      println 'Adding sources packaging...'
+      if (pluginGoal('jar', sourcePlugin)) {
         sourceSets += 'main'
-      } else if (goalExists('test-jar', sourcePlugin)) {
+      } else if (pluginGoal('test-jar', sourcePlugin)) {
         sourceSets += 'test'
       }
     }
-    return packSources(sourceSets)
+    packSources(sourceSets)
   }
 
   private boolean duplicateDependency(dependency, project, allProjects) {
@@ -429,7 +469,7 @@ artifacts.archives packageTests
       projectName = """rootProject.name = '${mvnProjectName}'
 """
     }
-    def modulePoms = modules(projects)
+    def modulePoms = modules(projects, true)
 
     def modules = new StringBuilder();
     def artifactIdToDir = [:]

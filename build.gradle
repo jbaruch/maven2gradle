@@ -5,8 +5,8 @@ apply plugin: 'idea'
 group = 'org.gradle.tools'
 version = '1.0-SNAPSHOT'
 
-	sourceCompatibility = 1.6
-	targetCompatibility = 1.6
+sourceCompatibility = 1.6
+targetCompatibility = 1.6
 
 repositories {
   org.apache.ivy.util.url.CredentialsStore.INSTANCE.addCredentials("REALM", "HOST", "USER", "PASSWORD");
@@ -38,7 +38,7 @@ uploadArchives {
   repositories.mavenDeployer {
     configuration = configurations.deployerJars
     pom.artifactId = 'maven2gradle'
-    snapshotRepository(url: "http://repo.jfrog.org/artifactory/libs-snapshots-local") {
+    snapshotRepository(url: "http://repo.jfrog.org/artifactory/gradle-snapshots-local") {
       authentication(userName: USER, password: PASSWORD)
     }
   }
