@@ -43,13 +43,14 @@ class Maven2Gradle {
 
     // use the Groovy XmlSlurper library to parse the text string
     effectivePom = new XmlSlurper().parseText(geEffectiveContents('pom', args))
-    effectiveSettings = new XmlSlurper().parseText(geEffectiveContents('settings'))
+    effectiveSettings = new XmlSlurper().parseText(geEffectiveContents('settings', args))
     String build
     def multimodule = effectivePom.name() == "projects"
 
 
     def uploadArchives = {
       """
+
 
 
 
@@ -71,6 +72,7 @@ uploadArchives {
       configurePom(pom)
     }
 }
+
 
 
 
@@ -258,9 +260,8 @@ ${globalExclusions(effectivePom)}
     }
     //in URI format there is one slash after file, while  Gradle needs two
     localRepoUri = localRepoUri.replace('file:/', 'file://')
-    return """mavenRepo urls: [\"${localRepoUri}\"]
+    """mavenRepo urls: [\"${localRepoUri}\"]
     """
-
   }
 
   private String getArtifactData(project) {
@@ -272,7 +273,7 @@ ${globalExclusions(effectivePom)}
   private String getRepositoriesForProjects(projects) {
     print 'Configuring Repositories... '
     String repos = """  repositories {
-    $localRepoUri
+    ${localRepoUri()}
 """
     def repoSet = new LinkedHashSet<String>();
     projects.each {
