@@ -60,6 +60,8 @@ class Maven2Gradle {
 
 
 
+
+
 uploadArchives {
   group = 'Maven'
   description = "Does a maven deploy of archives artifacts."
@@ -72,6 +74,8 @@ uploadArchives {
       configurePom(pom)
     }
 }
+
+
 
 
 
@@ -99,19 +103,22 @@ uploadArchives {
       println "Done."
 
 
+      def commonDeps = dependencies.get(allProjects[0].artifactId.text())
       build = """allprojects  {
-  apply plugin: 'java'
   apply plugin: 'maven'
 
   ${getArtifactData(allProjects[0])}
 }
 
 subprojects {
+  apply plugin: 'java'
   ${compilerSettings(allProjects[0])}
   ${packageSources(allProjects[0])}
   ${getRepositoriesForProjects(allProjects)}
   ${globalExclusions(allProjects[0])}
-  ${dependencies.get(allProjects[0].artifactId.text())}}
+  ${commonDeps}
+  ${testNg(commonDeps)}
+  }
 
 dependsOnChildren()
 """
@@ -145,6 +152,9 @@ description = '${module.name}'
         if (hasDependencies) {
           moduleBuild += moduleDependencies
         }
+
+        moduleBuild += testNg(moduleDependencies)
+
         if (submoduleBuildFile.exists()) {
           print "(backing up existing one)... "
           submoduleBuildFile.renameTo(new File("build.gradle.bak"))
@@ -224,6 +234,15 @@ ${globalExclusions(effectivePom)}
     }
     exclusions = exclusions ? exclusions += '}' : exclusions
     exclusions
+  }
+
+  def testNg = {moduleDependencies ->
+    if (moduleDependencies.contains('testng')) {
+      """test.useTestNG()
+"""
+    } else {
+      ''
+    }
   }
 
   def modules = {allProjects, incReactors ->
