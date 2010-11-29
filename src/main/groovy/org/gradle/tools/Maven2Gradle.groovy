@@ -1,20 +1,19 @@
 package org.gradle.tools
 
-/*
- * Copyright 2007-2009 the original author or authors.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *      http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+/* Copyright 2007-2010 the original author or authors.
+*
+* Licensed under the Apache License, Version 2.0 (the "License");
+* you may not use this file except in compliance with the License.
+* You may obtain a copy of the License at
+*
+*      http://www.apache.org/licenses/LICENSE-2.0
+*
+* Unless required by applicable law or agreed to in writing, software
+* distributed under the License is distributed on an "AS IS" BASIS,
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+* See the License for the specific language governing permissions and
+* limitations under the License.
+*/
 
 /**
  * This script obtains  the effective pom of the current project, reads its dependencies
@@ -62,6 +61,7 @@ class Maven2Gradle {
 
 
 
+
 uploadArchives {
   group = 'Maven'
   description = "Does a maven deploy of archives artifacts."
@@ -74,6 +74,7 @@ uploadArchives {
       configurePom(pom)
     }
 }
+
 
 
 
@@ -222,10 +223,10 @@ ${globalExclusions(effectivePom)}
     def enforcerPlugin = plugin('maven-enforcer-plugin', project)
     def enforceGoal = pluginGoal('enforce', enforcerPlugin)
     if (enforceGoal) {
-      exclusions += 'configurations {\n'
+      exclusions += 'configurations.allObjects {\n'
       enforceGoal.configuration.rules.bannedDependencies.excludes.childNodes().each {
         def tokens = it.text().tokenize(':')
-        exclusions += "all*.exclude group: '${tokens[0]}'"
+        exclusions += "it.exclude group: '${tokens[0]}'"
         if (tokens.size() > 1 && tokens[1] != '*') {
           exclusions += ", module: '${tokens[1]}'"
         }
