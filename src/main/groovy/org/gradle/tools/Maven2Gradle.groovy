@@ -46,50 +46,6 @@ class Maven2Gradle {
     String build
     def multimodule = effectivePom.name() == "projects"
 
-
-    def uploadArchives = {
-      """
-
-
-
-
-
-
-
-
-
-
-
-
-
-uploadArchives {
-  group = 'Maven'
-  description = "Does a maven deploy of archives artifacts."
-
-  repositories.mavenDeployer {
-        name = 'sshDeployer' // optional
-        repository(url: "http://repos.mycompany.com/releases") {
-            authentication(userName: "me", password: "myPassword")
-        }
-      configurePom(pom)
-    }
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-"""
-    }
-
     if (multimodule) {
       println "This is multi-module project.\n"
       def allProjects = effectivePom.project
@@ -168,6 +124,26 @@ description = '${module.name}'
         println "Done."
       }
       //TODO deployment
+      def uploadArchives = {
+        """
+
+
+uploadArchives {
+  group = 'Maven'
+  description = "Does a maven deploy of archives artifacts."
+
+  repositories.mavenDeployer {
+        name = 'sshDeployer' // optional
+        repository(url: "http://repos.mycompany.com/releases") {
+            authentication(userName: "me", password: "myPassword")
+        }
+      configurePom(pom)
+    }
+}
+
+
+"""
+      }
     } else {//simple
       println "This is single module project."
       build = """apply plugin: 'java'
