@@ -86,7 +86,7 @@ if [ -z "$GRADLE_HOME" -o ! -d "$GRADLE_HOME" ] ; then
     cd "$SAVED"
 fi
 
-CLASSPATH=$GRADLE_HOME/lib/maven2gradle-1.0-SNAPSHOT.jar;$GRADLE_HOME/lib/groovy-all-1.7.5.jar;$GRADLE_HOME/lib/ant-launcher-1.8.1.jar;$GRADLE_HOME/lib/ant-1.8.1.jar;
+CLASSPATH=$GRADLE_HOME/lib/maven2gradle-1.0-SNAPSHOT.jar:$GRADLE_HOME/lib/groovy-all-1.7.8.jar:$GRADLE_HOME/lib/ant-launcher-1.8.2.jar:$GRADLE_HOME/lib/ant-1.8.2.jar:
 # Determine the Java command to use to start the JVM.
 if [ -z "$JAVACMD" ] ; then
     if [ -n "$JAVA_HOME" ] ; then
