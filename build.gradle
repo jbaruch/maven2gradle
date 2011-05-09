@@ -2,14 +2,21 @@ apply plugin: 'groovy'
 apply plugin: 'maven'
 apply plugin: 'idea'
 
+//The "upload" system property should be set to true if the uploading
+// credentials should be configured (generally private)
+
 group = 'org.gradle.tools'
 version = '1.0-SNAPSHOT'
 
 sourceCompatibility = 1.6
 targetCompatibility = 1.6
 
+defaultTasks "build"
+
 repositories {
-  org.apache.ivy.util.url.CredentialsStore.INSTANCE.addCredentials("REALM", "HOST", "USER", "PASSWORD");
+  if (System.properties.upload == "true")
+    org.apache.ivy.util.url.CredentialsStore.INSTANCE.addCredentials("REALM", "HOST", "USER", "PASSWORD")
+
   mavenRepo urls: ["http://repo.jfrog.org/artifactory/libs-releases"]
   mavenRepo urls: ["http://repo.jfrog.org/artifactory/libs-snapshots"]
 }
@@ -38,8 +45,15 @@ uploadArchives {
   repositories.mavenDeployer {
     configuration = configurations.deployerJars
     pom.artifactId = 'maven2gradle'
+    if (System.properties.upload == "true") {
     snapshotRepository(url: "http://repo.jfrog.org/artifactory/gradle-snapshots-local") {
-      authentication(userName: USER, password: PASSWORD)
+          authentication(userName: USER, password: PASSWORD)
+        }
     }
   }
+}
+
+task installTooling(dependsOn: build) {
+    //Copy output JAR to $GRADLE_HOME/lib/
+    //Copy shell scripts to $GRADLE_HOME/bin/
 }
