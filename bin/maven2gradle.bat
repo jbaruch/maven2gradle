@@ -106,7 +106,7 @@ set CMD_LINE_ARGS=%$
 :execute
 @rem Setup the command line
 
-set CLASSPATH=%GRADLE_HOME%\lib\maven2gradle-1.0-SNAPSHOT.jar;%GRADLE_HOME%\lib\groovy-all-1.7.5.jar;%GRADLE_HOME%\lib\ant-launcher-1.8.1.jar;%GRADLE_HOME%\lib\ant-1.8.1.jar;
+set CLASSPATH=%GRADLE_HOME%\lib\maven2gradle-1.0-SNAPSHOT.jar;%GRADLE_HOME%\lib\groovy-all-1.7.10.jar;%GRADLE_HOME%\lib\ant-launcher-1.8.1.jar;%GRADLE_HOME%\lib\ant-1.8.1.jar;
 set STARTER_MAIN_CLASS=org.gradle.tools.Maven2Gradle
 
 set JAVA_EXE=%JAVA_HOME%\bin\java.exe
