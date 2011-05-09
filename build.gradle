@@ -6,6 +6,7 @@ apply plugin: 'idea'
 // credentials should be configured (generally private)
 
 group = 'org.gradle.tools'
+archivesBaseName = 'maven2gradle'
 version = '1.0-SNAPSHOT'
 
 sourceCompatibility = 1.6
@@ -63,8 +64,6 @@ task installJARs(type: Copy, dependsOn: build) {
         exclude '*-sources.jar'
     }
     into ("${gradleHomeLib}")
-    
-    println "Installing ${jar.archiveName} to ${gradleHomeLib}"
 }
 
 task installScripts(type: Copy, dependsOn: installJARs) {
@@ -76,6 +75,4 @@ task installScripts(type: Copy, dependsOn: installJARs) {
         include '*.jar'
     }
     into (gradleHomeBin)
-
-    //println "Installing ${from} to ${to}"
 }
