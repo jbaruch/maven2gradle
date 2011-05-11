@@ -22,10 +22,14 @@ To do:
 
 Installation:
 =============
-* Current version works with Gradle 0.9-rc-3 _only_.
-* Download the latest jar from [JFrog Artifactory repository](http://repo.jfrog.org/artifactory/repo/org/gradle/tools/maven2gradle/1.0-SNAPSHOT/)
-* Put the jar into $GRADLE_HOME/lib
-* Put the batch files from sources bin directory into $GRADLE_HOME/bin
+* Note: Current version only works with Gradle 1.0-RC-Milestone3
+* Note: Current version only works with Maven 3.0+ (see FAQ for the Maven 2 exception. Contribute a pull request if you can solve it.)
+* Option 1:
+    * Download the latest jar from [JFrog Artifactory repository](http://repo.jfrog.org/artifactory/repo/org/gradle/tools/maven2gradle/1.0-SNAPSHOT/)
+    * Put the jar into $GRADLE_HOME/lib
+    * Put the batch files from sources bin directory into $GRADLE_HOME/bin
+* Option 2:
+    * Run the `gradle installScripts` task which automatically copies the latest JAR and scripts into the aforementioned directories.
 
 Usage:
 ============
