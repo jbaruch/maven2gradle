@@ -42,11 +42,18 @@ Usage:
 
 Building from source:
 =====================
-* You'll need a gradle.properties file, as described here: http://gradle.org/0.9-rc-3/docs/userguide/userguide_single.html#sec:repositories
-Look at 33.5.2.1 "Accessing password protected Maven repositories", example 33.24. In short: create gradle.properties file in your ~\.gradle and define USER and PASSWORD properties.
+* Option 1:
+    * If wishing to only build locally, there are no special requirements for building.
+* Option 2:
+    * If wishing to deploy the resultant JAR and Source, you'll need a gradle.properties file, as described here: http://gradle.org/0.9-rc-3/docs/userguide/userguide_single.html#sec:repositories
+    * Look at 33.5.2.1 "Accessing password protected Maven repositories", example 33.24.
+    * Create gradle.properties file in your ~\.gradle and define USER and PASSWORD properties.
+    * Trigger the use of this file and values by setting `-Dupload=true` on the command line invocation of the Gradle build.
 
 Note: Your project will be considered multi-module only if your reactor is also a parent of at least one of your modules. Why so? Reactor project is built last, when Parent project is built first. I need reactor to be built first, because effective-pom Mojo generates needed output only if it founds modules in first project it encounters. Making reactor also a parent achieves this.
 
-[Antony Stubbs](http://github.com/astubbs)
-
-[Baruch Sadogursky](http://github.com/jbaruch)
+Recognized Contributors:
+============
+* [Antony Stubbs](http://github.com/astubbs)
+* [Baruch Sadogursky](http://github.com/jbaruch)
+* [Matthew McCullough](http://github.com/matthewmccullough)
