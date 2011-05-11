@@ -19,7 +19,6 @@ Features list:
 To do:
 =================
 * Generate deployment settings (with support to optional dependencies and provided scope in generated pom.xml)
-* Add installation task to build.gradle of the project to setup the libs and scripts automatically.
 
 Installation:
 =============
