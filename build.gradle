@@ -72,7 +72,7 @@ task installScripts(type: Copy, dependsOn: installJARs) {
     def gradleHomeBin = gradleHome + "/bin"
 
     from ('bin') {
-        include '*.jar'
+        include 'maven2gradle*'
     }
     into (gradleHomeBin)
 }
