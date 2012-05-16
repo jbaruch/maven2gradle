@@ -505,7 +505,7 @@ project('$entry.key').projectDir = """ + '"$rootDir/' + "${entry.value}" + '" as
             errorproperty: "cmdErr",
             failonerror: "true",
             executable: ((String) System.properties['os.name']).toLowerCase().contains("win") ? "mvn.bat" : "mvn") {
-      arg(line: """-Doutput=${fileName} org.apache.maven.plugins:maven-help-plugin:2.2-SNAPSHOT:effective-$file""")
+      arg(line: """-Doutput=${fileName} help:effective-$file""")
       env(key: "JAVA_HOME", value: System.getProperty("java.home"))
     }
 

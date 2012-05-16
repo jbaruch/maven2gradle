@@ -1,78 +1,47 @@
+import java.text.SimpleDateFormat
+
+apply plugin: 'application'
 apply plugin: 'groovy'
 apply plugin: 'maven'
 apply plugin: 'idea'
 
-//The "upload" system property should be set to true if the uploading
-// credentials should be configured (generally private)
-
 group = 'org.gradle.tools'
 archivesBaseName = 'maven2gradle'
-version = '1.0-SNAPSHOT'
+version = '1.0-alpha-1'
+
+applicationName = 'maven2gradle'
+mainClassName = 'org.gradle.tools.Maven2Gradle'
 
 sourceCompatibility = 1.6
 targetCompatibility = 1.6
 
-defaultTasks "build"
-
 repositories {
-  if (System.properties.upload == "true")
-    org.apache.ivy.util.url.CredentialsStore.INSTANCE.addCredentials("REALM", "HOST", "USER", "PASSWORD")
-
-  mavenRepo urls: ["http://repo.jfrog.org/artifactory/libs-releases"]
-  mavenRepo urls: ["http://repo.jfrog.org/artifactory/libs-snapshots"]
+  mavenCentral()
 }
-
-configurations {
-  deployerJars
-}
-
-task sourcesJar(type: Jar, dependsOn: compileGroovy) {
-  from sourceSets.main.allSource
-  classifier = 'sources'
-}
-
-artifacts {
-  archives sourcesJar
-}
-
 
 dependencies {
   groovy localGroovy()
   compile group: 'org.apache.ant', name: 'ant', version: '1.8.2'
-  deployerJars group: 'org.apache.maven.wagon', name: 'wagon-ssh', version: '1.0-beta-2'
 }
 
-uploadArchives {
-  repositories.mavenDeployer {
-    configuration = configurations.deployerJars
-    pom.artifactId = 'maven2gradle'
-    if (System.properties.upload == "true") {
-    snapshotRepository(url: "http://repo.jfrog.org/artifactory/gradle-snapshots-local") {
-          authentication(userName: USER, password: PASSWORD)
-        }
-    }
-  }
+task copyJarToGradleHome(type: Copy, dependsOn: build) {
+    description = 'Copy output JAR to $GRADLE_HOME/lib'
+    from jar
+    into "$gradleHome/lib"
 }
 
-task installJARs(type: Copy, dependsOn: build) {
-    //Copy output JAR to $GRADLE_HOME/lib/
-    def gradleHome = System.getenv()['GRADLE_HOME']
-    def gradleHomeLib = gradleHome + "/lib"
-
-    from ('build/libs') {
-        include '*.jar'
-        exclude '*-sources.jar'
-    }
-    into ("${gradleHomeLib}")
+task copyScriptsToGradleHome(type: Copy) {
+    description = 'Copy shell scripts to $GRADLE_HOME/bin/'
+    from startScripts.outputs.files
+    into "$gradleHome/bin"
 }
 
-task installScripts(type: Copy, dependsOn: installJARs) {
-    //Copy shell scripts to $GRADLE_HOME/bin/
-    def gradleHome = System.getenv()['GRADLE_HOME']
-    def gradleHomeBin = gradleHome + "/bin"
-
-    from ('bin') {
-        include 'maven2gradle*'
-    }
-    into (gradleHomeBin)
+task copy2GradleHome(dependsOn: [copyJarToGradleHome, copyScriptsToGradleHome]) {
+    description = 'Copies the maven2gradle jar as well as the maven2gradle start scripts to the local GRADLE_HOME'
 }
+
+def getGradleHome() {
+    System.getenv()['GRADLE_HOME']
+}
+
+task wrapper(type: Wrapper)
