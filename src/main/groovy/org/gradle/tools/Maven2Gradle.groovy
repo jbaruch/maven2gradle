@@ -561,7 +561,7 @@ project('$entry.key').projectDir = """ + '"$rootDir/' + "${entry.value}" + '" as
  * classifier if it exists
  */
   private def contructSignature(mavenDependency) {
-    def gradelDep = "${mavenDependency.groupId.text()}:${mavenDependency.artifactId.text()}:${mavenDependency?.version?.text()}"
+    def gradelDep = "group: '${mavenDependency.groupId.text()}', name: '${mavenDependency.artifactId.text()}', version:\"${mavenDependency?.version?.text()}\""
     def classifier = elementHasText(mavenDependency.classifier) ? gradelDep + ":" + mavenDependency.classifier.text().trim() : gradelDep
     return classifier
   }
