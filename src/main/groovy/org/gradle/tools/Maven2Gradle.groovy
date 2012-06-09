@@ -256,7 +256,7 @@ ${globalExclusions(effectivePom)}
     }
     //in URI format there is one slash after file, while  Gradle needs two
     localRepoUri = localRepoUri.replace('file:/', 'file://')
-    """mavenRepo urls: [\"${localRepoUri}\"]
+    """mavenRepo url: \"${localRepoUri}\"
     """
   }
 
