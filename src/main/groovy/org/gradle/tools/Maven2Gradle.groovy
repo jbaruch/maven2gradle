@@ -88,7 +88,7 @@ dependsOnChildren()
         File submoduleBuildFile = new File(projectDir(module), 'build.gradle')
         def group = ''
         if (module.groupId != allProjects[0].groupId) {
-          group = "group = '${module.groupId}"
+          group = "group = '${module.groupId}'"
         }
         String moduleBuild = """
 ${group}
@@ -256,7 +256,7 @@ ${globalExclusions(effectivePom)}
     }
     //in URI format there is one slash after file, while  Gradle needs two
     localRepoUri = localRepoUri.replace('file:/', 'file://')
-    """mavenRepo urls: [\"${localRepoUri}\"]
+    """mavenRepo url: \"${localRepoUri}\"
     """
   }
 
@@ -561,7 +561,7 @@ project('$entry.key').projectDir = """ + '"$rootDir/' + "${entry.value}" + '" as
  * classifier if it exists
  */
   private def contructSignature(mavenDependency) {
-    def gradelDep = "${mavenDependency.groupId.text()}:${mavenDependency.artifactId.text()}:${mavenDependency?.version?.text()}"
+    def gradelDep = "group: '${mavenDependency.groupId.text()}', name: '${mavenDependency.artifactId.text()}', version:\"${mavenDependency?.version?.text()}\""
     def classifier = elementHasText(mavenDependency.classifier) ? gradelDep + ":" + mavenDependency.classifier.text().trim() : gradelDep
     return classifier
   }
