@@ -88,7 +88,7 @@ dependsOnChildren()
         File submoduleBuildFile = new File(projectDir(module), 'build.gradle')
         def group = ''
         if (module.groupId != allProjects[0].groupId) {
-          group = "group = '${module.groupId}"
+          group = "group = '${module.groupId}'"
         }
         String moduleBuild = """
 ${group}
