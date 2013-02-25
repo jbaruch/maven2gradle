@@ -1,3 +1,11 @@
+# Important Note
+
+This repo is obsolete and has been superceded by the tool at http://www.gradle.org/docs/current/userguide/bootstrap_plugin.html instead.
+
+
+
+----
+
 This tool obtains  the effective pom of the current project, reads its dependencies and generates build.gradle scripts.
 
 Features list:
