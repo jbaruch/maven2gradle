@@ -1,6 +1,6 @@
 # Important Note
 
-This repo is obsolete and has been superceded by the tool at http://www.gradle.org/docs/current/userguide/bootstrap_plugin.html instead.
+This repo is obsolete and has been superseded by the [Gradle Build Setup Plugin[(http://www.gradle.org/docs/current/userguide/bootstrap_plugin.html) instead.
 
 
 
